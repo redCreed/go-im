@@ -1,0 +1,50 @@
+##服务注册与发现
+Discovery:
+  driver: etcd
+  host: 127.0.0.1:2379
+  timeout: 5
+
+Redis:
+  host: 127.0.0.1
+  port: 6379
+  password:
+  db: 0
+
+RpcServer:
+  addr: ":3109"
+  timeout: 1
+
+RpcClient:
+  dial: 1
+  timeout: 1
+
+Tcp:
+  host: [":3101",":3102"]
+  sendBuf: 4096
+  receiveBuf: 4096
+  keepalive: false
+  reader: 32
+  readBuf: 1024
+  readBufSize: 8192
+  writer: 32
+  writeBuf: 1024
+  writeBufSize: 8192
+
+Websocket:
+  host: [":3201",":3202"]
+  tlsOpen: false
+  tlsBind: ":3103"
+  certFile: "../../cert.pem"
+  privateFile: "../../private.pem"
+
+Bucket:
+  size: 32
+  channel: 1024
+  room: 1024
+  routineAmount: 32
+  routineSize: 1024
+
+#是否是开发环境
+Mode:
+  debug: true
+
