@@ -8,9 +8,10 @@ func New(path string) {
 }
 
 type Config struct {
-	Bucket *Bucket
-	Tcp    *TCP
-	Mode   *Mode
+	Bucket   *Bucket
+	Tcp      *TCP
+	Mode     *Mode
+	Protocol *Protocol
 }
 
 type Bucket struct {
@@ -37,4 +38,8 @@ type TCP struct {
 
 type Mode struct {
 	Debug bool
+}
+
+type Protocol struct {
+	ProtoSize int
 }

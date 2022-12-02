@@ -48,3 +48,5 @@ Bucket:
 Mode:
   debug: true
 
+Protocol:
+    protoSize: 5

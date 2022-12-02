@@ -4,6 +4,7 @@ go 1.17
 
 require (
 	github.com/google/uuid v1.1.2
+	github.com/gorilla/websocket v1.5.0
 	go.uber.org/zap v1.23.0
 	google.golang.org/grpc v1.51.0
 	google.golang.org/protobuf v1.28.1

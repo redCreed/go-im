@@ -1,6 +1,7 @@
 package connect
 
 import (
+	"bufio"
 	"go.uber.org/zap"
 	"net"
 	"runtime"
@@ -63,13 +64,20 @@ func AcceptTcp(s *Server, listener *net.TCPListener) {
 			return
 		}
 
-		serverTcp()
+		go serverTcp(s, conn, r)
 		if r++; r == maxInt {
 			r = 0
 		}
 	}
 }
 
-func serverTcp() {
+func serverTcp(s *Server, conn *net.TCPConn, r int) {
+	var ch *Channel
+	ch = NewChannel(0, s.c.Protocol.ProtoSize)
+	ch.connTcp = conn
+	s.ServeTCP(ch)
+}
 
+func (s *Server) ServeTCP(ch *Channel) {
+	bufio.NewReader(ch.connTcp)
 }
