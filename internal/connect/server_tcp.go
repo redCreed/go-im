@@ -2,16 +2,22 @@ package connect
 
 import (
 	"bufio"
+	"context"
+	"fmt"
+	"go-im/api/protocol"
+	"go-im/pkg/proto"
 	"go.uber.org/zap"
+	"io"
 	"net"
 	"runtime"
+	"time"
 )
 
 const (
 	maxInt = 1<<31 - 1
 )
 
-func InitTcp(s *Server, addrs []string) error {
+func InitTCP(s *Server, addrs []string) error {
 	var (
 		err      error
 		tcpAddr  *net.TCPAddr
@@ -30,14 +36,14 @@ func InitTcp(s *Server, addrs []string) error {
 		//默认最大go等于cpu核心数
 		for i := 0; i < runtime.NumCPU(); i++ {
 			//分割n核接收连接来提升性能
-			go AcceptTcp(s, listener)
+			go AcceptTCP(s, listener)
 		}
 
 	}
 	return nil
 }
 
-func AcceptTcp(s *Server, listener *net.TCPListener) {
+func AcceptTCP(s *Server, listener *net.TCPListener) {
 	var (
 		err  error
 		conn *net.TCPConn
@@ -64,14 +70,14 @@ func AcceptTcp(s *Server, listener *net.TCPListener) {
 			return
 		}
 
-		go serverTcp(s, conn, r)
+		go serverTCP(s, conn, r)
 		if r++; r == maxInt {
 			r = 0
 		}
 	}
 }
 
-func serverTcp(s *Server, conn *net.TCPConn, r int) {
+func serverTCP(s *Server, conn *net.TCPConn, r int) {
 	var ch *Channel
 	ch = NewChannel(0, s.c.Protocol.ProtoSize)
 	ch.connTcp = conn
@@ -79,5 +85,107 @@ func serverTcp(s *Server, conn *net.TCPConn, r int) {
 }
 
 func (s *Server) ServeTCP(ch *Channel) {
-	bufio.NewReader(ch.connTcp)
+	var (
+		err     error
+		rid     string
+		accepts []int32
+		hb      time.Duration
+		b       *Bucket
+	)
+	reader := bufio.NewReader(ch.connTcp)
+	writer := bufio.NewWriter(ch.connTcp)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer func() {
+		cancel()
+		ch.connTcp.Close()
+		//todo 处理
+		b.Del(ch)
+	}()
+	//远程连接的ip
+	ch.IP, _, _ = net.SplitHostPort(ch.connTcp.RemoteAddr().String())
+	p := new(protocol.Proto)
+	//认证tcp连接
+	if ch.Mid, ch.Key, rid, accepts, hb, err = s.authTCP(ctx, reader, writer, p); err != nil {
+		return
+	}
+	fmt.Println("heartBeat:", hb)
+	ch.Watch(accepts...)
+	//user key=>bucket=>room_id
+	b = s.Bucket(ch.Key)
+	if err = b.Put(rid, ch); err != nil {
+		s.log.Error("put err:", zap.Error(err))
+		return
+	}
+
+	//读取消息并write数据到客户端
+	go s.writeTCPData(ctx, writer, ch, b)
+	//读取前端发送过来的消息
+	s.readTCPData(ctx, reader, ch, b)
+}
+
+func (s *Server) writeTCPData(ctx context.Context, writer *bufio.Writer, ch *Channel, b *Bucket) {
+	for {
+
+	}
+}
+
+func (s *Server) readTCPData(ctx context.Context, reader *bufio.Reader, ch *Channel, b *Bucket) {
+	p := new(protocol.Proto)
+	//读操作
+	for {
+		//白名单处理
+
+		//消息解析
+		err := proto.ReadTcp(p, reader)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			s.log.Error("read data err:", zap.Error(err))
+			break
+		}
+		//todo 是否心跳
+		if p.Op == protocol.OpHeartbeat {
+
+		} else {
+			if err = s.Operate(ctx, p, b, ch); err != nil {
+				break
+			}
+		}
+		ch.Signal()
+	}
+
+	if err := s.Disconnect(ctx, ch.Mid, ch.Key); err != nil {
+		s.log.Error(fmt.Sprintf("key: %s mid: %d operator do disconnect", ch.Key, ch.Mid), zap.Error(err))
+	}
+}
+
+// auth for goim handshake with client, use rsa & aes.
+//返回参数分别: 会员id 唯一key  房间id  用户切换 room, 也就在这里处理  心跳时间
+func (s *Server) authTCP(ctx context.Context, rr *bufio.Reader, wr *bufio.Writer, p *protocol.Proto) (mid int64, key, rid string, accepts []int32, hb time.Duration, err error) {
+	for {
+		if err = proto.ReadTcp(p, rr); err != nil {
+			return 0, "", "", nil, 0, err
+		}
+		//判断是否是认证消息
+		if p.Op == protocol.OpAuth {
+			break
+		} else {
+			//todo 是否死循环
+			s.log.Error(fmt.Sprintf("tcp request operation(%d) not auth", p.Op))
+		}
+	}
+	if mid, key, rid, accepts, hb, err = s.Connect(ctx, p, ""); err != nil {
+		s.log.Error("authTCP.Connect", zap.String("key", key), zap.Error(err))
+		return
+	}
+	p.Op = protocol.OpAuthReply
+	p.Body = nil
+	if err = proto.WriteTcp(p, wr); err != nil {
+		s.log.Error("authTCP.WriteTCP", zap.String("key", key), zap.Error(err))
+		return
+	}
+	//刷新数据到对端
+	err = wr.Flush()
+	return
 }

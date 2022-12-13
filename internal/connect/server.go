@@ -6,7 +6,6 @@ import (
 	"go-im/internal/connect/conf"
 	"go-im/pkg/cityhash"
 	"go-im/pkg/log"
-	"strconv"
 )
 
 type Server struct {
@@ -43,8 +42,8 @@ func (s *Server) Buckets() []*Bucket {
 	return s.buckets
 }
 
-func (s *Server) Bucket(userId int) *Bucket {
-	str := strconv.Itoa(userId)
-	idx := cityhash.CityHash32([]byte(str), uint32(len(str))) % uint32(len(s.buckets))
+func (s *Server) Bucket(key string) *Bucket {
+	idx := cityhash.CityHash32([]byte(key), uint32(len(key))) % uint32(len(s.buckets))
 	return s.buckets[idx]
 }
+

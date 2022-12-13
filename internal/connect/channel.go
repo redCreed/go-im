@@ -29,3 +29,21 @@ func NewChannel(cli, svr int) *Channel {
 	c.watchOps = make(map[int32]struct{})
 	return c
 }
+
+func (c *Channel) Watch(accepts ...int32) {
+	c.mutex.Lock()
+	for _, op := range accepts {
+		c.watchOps[op] = struct{}{}
+	}
+	c.mutex.Unlock()
+}
+
+//Close 发送关闭信号 关闭这个channel
+func (c *Channel) Close() {
+	c.signal <- protocol.ProtoFinish
+}
+
+// Signal send signal to the channel, protocol ready.
+func (c *Channel) Signal() {
+	c.signal <- protocol.ProtoReady
+}
