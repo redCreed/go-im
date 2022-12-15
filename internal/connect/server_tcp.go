@@ -84,6 +84,15 @@ func serverTCP(s *Server, conn *net.TCPConn, r int) {
 	s.ServeTCP(ch)
 }
 
+func (s *Server) closeTCP(ch *Channel, b *Bucket) {
+	ch.connTcp.Close()
+	//todo 处理
+	if b != nil {
+		b.Del(ch)
+	}
+	ch.Close()
+}
+
 func (s *Server) ServeTCP(ch *Channel) {
 	var (
 		err     error
@@ -95,17 +104,14 @@ func (s *Server) ServeTCP(ch *Channel) {
 	reader := bufio.NewReader(ch.connTcp)
 	writer := bufio.NewWriter(ch.connTcp)
 	ctx, cancel := context.WithCancel(context.Background())
-	defer func() {
-		cancel()
-		ch.connTcp.Close()
-		//todo 处理
-		b.Del(ch)
-	}()
+	defer cancel()
 	//远程连接的ip
 	ch.IP, _, _ = net.SplitHostPort(ch.connTcp.RemoteAddr().String())
 	p := new(protocol.Proto)
 	//认证tcp连接
 	if ch.Mid, ch.Key, rid, accepts, hb, err = s.authTCP(ctx, reader, writer, p); err != nil {
+		s.log.Error("authTCP err:", zap.Error(err))
+		s.closeTCP(ch, b)
 		return
 	}
 	fmt.Println("heartBeat:", hb)
@@ -114,47 +120,99 @@ func (s *Server) ServeTCP(ch *Channel) {
 	b = s.Bucket(ch.Key)
 	if err = b.Put(rid, ch); err != nil {
 		s.log.Error("put err:", zap.Error(err))
+		s.closeTCP(ch, b)
 		return
 	}
 
 	//读取消息并write数据到客户端
-	go s.writeTCPData(ctx, writer, ch, b)
+	go s.writeTCPData(ctx, ch.connTcp, ch, b)
 	//读取前端发送过来的消息
-	s.readTCPData(ctx, reader, ch, b)
+	s.readTCPData(ctx, ch.connTcp, ch, b)
 }
 
-func (s *Server) writeTCPData(ctx context.Context, writer *bufio.Writer, ch *Channel, b *Bucket) {
+func (s *Server) writeTCPData(ctx context.Context, conn *net.TCPConn, ch *Channel, b *Bucket) {
+	var (
+		p      *protocol.Proto
+		finish bool
+		online int32
+		err    error
+	)
+	wr := bufio.NewWriter(conn)
 	for {
-
+		//推送过来的消息
+		p = ch.Ready()
+		fmt.Println("read:", p.Op)
+		switch p {
+		case protocol.ProtoFinish:
+			finish = true
+			goto failed
+		case protocol.ProtoReady:
+			if p.Op == protocol.OpHeartbeatReply {
+				if ch.Room != nil {
+					online = ch.Room.OnlineNum()
+				}
+				//读到心跳将房间在线人数返回
+				if err = proto.WriteTCPHeart(p, wr, online); err != nil {
+					goto failed
+				}
+			} else {
+				if err = proto.WriteTcp(p, wr); err != nil {
+					goto failed
+				}
+			}
+			p.Body = nil
+		default:
+			// server send 如果连接端口，写报错，直接关闭连接
+			if err = proto.WriteTcp(p, wr); err != nil {
+				goto failed
+			}
+		}
+		if err = wr.Flush(); err != nil {
+			break
+		}
+	}
+failed:
+	//todo 是否会重复关闭
+	conn.Close()
+	// must ensure all channel message discard, for reader won't blocking Signal
+	for !finish {
+		finish = ch.Ready() == protocol.ProtoFinish
 	}
 }
 
-func (s *Server) readTCPData(ctx context.Context, reader *bufio.Reader, ch *Channel, b *Bucket) {
-	p := new(protocol.Proto)
-	//读操作
+//tcp 15s 3共45
+func (s *Server) readTCPData(ctx context.Context, conn *net.TCPConn, ch *Channel, b *Bucket) {
+	var err error
+	reader := bufio.NewReader(ch.connTcp)
 	for {
-		//白名单处理
-
+		p := new(protocol.Proto)
+		//todo 敏感词过滤
 		//消息解析
-		err := proto.ReadTcp(p, reader)
+		err = proto.ReadTcp(p, reader)
+		//todo 处理
 		if err == io.EOF {
-			break
+			s.log.Error("io.EOF err:", zap.Error(err))
 		}
 		if err != nil {
 			s.log.Error("read data err:", zap.Error(err))
 			break
 		}
-		//todo 是否心跳
+		fmt.Println("p:", p.Op, string(p.Body))
 		if p.Op == protocol.OpHeartbeat {
-
+			p.Op = protocol.OpHeartbeatReply
+			p.Body = nil
 		} else {
 			if err = s.Operate(ctx, p, b, ch); err != nil {
 				break
 			}
 		}
-		ch.Signal()
+		//channel长度不够会报错，等待数据被发出去
+		if err = ch.Push(p); err != nil {
+			s.log.Error(fmt.Sprintf("push proto err, key: %s mid: %d ", ch.Key, ch.Mid), zap.Error(err))
+		}
 	}
 
+	s.closeTCP(ch, b)
 	if err := s.Disconnect(ctx, ch.Mid, ch.Key); err != nil {
 		s.log.Error(fmt.Sprintf("key: %s mid: %d operator do disconnect", ch.Key, ch.Mid), zap.Error(err))
 	}

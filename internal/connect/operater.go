@@ -13,6 +13,8 @@ import (
 
 // Connect connected a connection.
 func (s *Server) Connect(c context.Context, p *protocol.Proto, cookie string) (mid int64, key, rid string, accepts []int32, heartbeat time.Duration, err error) {
+	return 11022, "inson", "ooodi", []int32{15314}, time.Duration(3), nil
+
 	reply, err := s.rpcClient.Connect(c, &logic.ConnectReq{
 		Server: s.serverID,
 		Cookie: cookie,
@@ -26,6 +28,7 @@ func (s *Server) Connect(c context.Context, p *protocol.Proto, cookie string) (m
 
 // Disconnect disconnected a connection.
 func (s *Server) Disconnect(c context.Context, mid int64, key string) (err error) {
+	return nil
 	_, err = s.rpcClient.Disconnect(context.Background(), &logic.DisconnectReq{
 		Server: s.serverID,
 		Mid:    mid,
@@ -55,17 +58,19 @@ func (s *Server) Operate(ctx context.Context, p *protocol.Proto, b *Bucket, ch *
 			ch.Watch(ops...)
 		}
 		p.Op = protocol.OpUnsubReply
-	default:
+	default: //发送到logic(真正发送消息是http请求)  默认为发送消息
 		if err := s.Receive(ctx, ch.Mid, p); err != nil {
 			s.log.Error(fmt.Sprintf("s.Report(%d) op:%d", ch.Mid, p.Op), zap.Error(err))
 		}
 		p.Body = nil
+		p.Op = protocol.OpUnsubReply
 	}
 	return nil
 }
 
 // Receive receive a message.
 func (s *Server) Receive(ctx context.Context, mid int64, p *protocol.Proto) (err error) {
+	return
 	_, err = s.rpcClient.Receive(ctx, &logic.ReceiveReq{Mid: mid, Proto: p})
 	return
 }

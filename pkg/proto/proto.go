@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"go-im/api/protocol"
+	"strconv"
 )
 
 const (
@@ -90,8 +91,27 @@ func WriteTcp(p *protocol.Proto, writer *bufio.Writer) error {
 		return err
 	}
 	//bufio有缓存，flush真正写数据
-	//if err = writer.Flush(); err != nil {
-	//	return err
-	//}
+	if err = writer.Flush(); err != nil {
+		return err
+	}
+	return nil
+}
+
+// WriteTCPHeart write TCP heartbeat with room online.
+func WriteTCPHeart(p *protocol.Proto, wr *bufio.Writer, online int32) error {
+	var err error
+	packageSize := len(p.Body) + RawHeaderSize
+	tmp := make([]byte, packageSize)
+	// 封装头信息
+	binary.BigEndian.PutUint32(tmp[PackIndex:HeaderIndex], uint32(packageSize))
+	binary.BigEndian.PutUint16(tmp[HeaderIndex:VersionIndex], uint16(RawHeaderSize))
+	binary.BigEndian.PutUint16(tmp[VersionIndex:OperateIndex], uint16(p.Ver))
+	binary.BigEndian.PutUint32(tmp[OperateIndex:SequenceIndex], uint32(p.Op))
+	binary.BigEndian.PutUint32(tmp[SequenceIndex:RawHeaderSize], uint32(p.Seq))
+	p.Body = []byte(strconv.Itoa(int(online)))
+	copy(tmp[RawHeaderSize:], p.Body)
+	if _, err = wr.Write(tmp); err != nil {
+		return err
+	}
 	return nil
 }

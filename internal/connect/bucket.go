@@ -17,6 +17,7 @@ type Bucket struct {
 
 func NewBucket(bucket *conf.Bucket) (b *Bucket) {
 	b = new(Bucket)
+	b.ipCnts = make(map[string]int32)
 	b.chs = make(map[string]*Channel, bucket.Channel)
 	b.rooms = make(map[string]*Room, bucket.Room)
 	b.routines = make([]chan *connect.BroadcastRoomReq, bucket.RoutineAmount)

@@ -2,6 +2,7 @@ package connect
 
 import (
 	"github.com/gorilla/websocket"
+	"github.com/pkg/errors"
 	"go-im/api/protocol"
 	"net"
 	"sync"
@@ -25,7 +26,7 @@ type Channel struct {
 func NewChannel(cli, svr int) *Channel {
 	c := new(Channel)
 	//c.CliProto.Init(cli)
-	c.signal = make(chan *protocol.Proto, svr)
+	c.signal = make(chan *protocol.Proto, 1024)
 	c.watchOps = make(map[int32]struct{})
 	return c
 }
@@ -46,4 +47,16 @@ func (c *Channel) Close() {
 // Signal send signal to the channel, protocol ready.
 func (c *Channel) Signal() {
 	c.signal <- protocol.ProtoReady
+}
+func (c *Channel) Ready() *protocol.Proto {
+	return <-c.signal
+}
+
+func (c *Channel) Push(p *protocol.Proto) (err error) {
+	select {
+	case c.signal <- p:
+	default:
+		err = errors.New("signal channel not enough")
+	}
+	return
 }

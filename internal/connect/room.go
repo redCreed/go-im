@@ -70,3 +70,11 @@ func (r *Room) Close() {
 		ch.Close()
 	}
 }
+
+// OnlineNum the room all online.
+func (r *Room) OnlineNum() int32 {
+	if r.OnlineCount > 0 {
+		return int32(r.OnlineCount)
+	}
+	return int32(r.Online)
+}

@@ -17,11 +17,13 @@ type Log struct {
 }
 
 func NewLog(servName string, debug bool) *Log {
-	return &Log{
+	l := &Log{
 		serviceName: servName,
 		debug:       debug,
 		Logger:      nil,
 	}
+	l.Start(context.Background())
+	return l
 }
 
 func (l *Log) Start(ctx context.Context) error {
@@ -51,7 +53,7 @@ func getLog(servName string, debug bool) *zap.Logger {
 	}
 
 	// 设置日志级别
-	cores := []zapcore.Core{}
+	var cores []zapcore.Core
 
 	//设置info waring和error的日志
 	infoLevel := zap.LevelEnablerFunc(func(lvl zapcore.Level) bool {
@@ -126,10 +128,10 @@ func getLog(servName string, debug bool) *zap.Logger {
 func getWriter(filename string) lumberjack.Logger {
 	today := time.Now().Format("20060102")
 	return lumberjack.Logger{
-		Filename:   fmt.Sprintf("logs/%s/%s", today, filename), // 日志文件路径
-		MaxSize:    128,                                        // 每个日志文件保存的最大尺寸 单位：M  128
-		MaxBackups: 30,                                         // 日志文件最多保存多少个备份 30
-		MaxAge:     7,                                          // 文件最多保存多少天 7
-		Compress:   true,                                       // 是否压缩
+		Filename:   fmt.Sprintf("./logs/%s/%s", today, filename), // 日志文件路径
+		MaxSize:    128,                                          // 每个日志文件保存的最大尺寸 单位：M  128
+		MaxBackups: 30,                                           // 日志文件最多保存多少个备份 30
+		MaxAge:     7,                                            // 文件最多保存多少天 7
+		Compress:   true,                                         // 是否压缩
 	}
 }
