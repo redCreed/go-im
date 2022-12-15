@@ -36,6 +36,7 @@ Websocket:
   tlsBind: ":3103"
   certFile: "../../cert.pem"
   privateFile: "../../private.pem"
+  
 
 Bucket:
   size: 32

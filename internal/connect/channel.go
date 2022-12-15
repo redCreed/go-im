@@ -18,7 +18,7 @@ type Channel struct {
 	IP       string
 	watchOps map[int32]struct{} //int32 是房间号 map 多个房间号 一个 goim 终端能够接收多个房间发送来的 im 消息
 	mutex    sync.RWMutex
-	conn     *websocket.Conn
+	ws       *websocket.Conn
 	connTcp  *net.TCPConn
 }
 

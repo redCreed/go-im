@@ -126,10 +126,39 @@ func (b *Bucket) ChangeRoom(roomId string, ch *Channel) error {
 
 // roomproc
 func (b *Bucket) roomProc(c chan *connect.BroadcastRoomReq) {
-	//for {
-	//	arg := <-c
-	//	if room := b.Room(arg.RoomID); room != nil {
-	//		room.Push(arg.Proto)
-	//	}
-	//}
+	for {
+		arg := <-c
+		if room := b.Room(arg.RoomID); room != nil {
+			room.Push(arg.Proto)
+		}
+	}
+}
+
+func (b *Bucket) Room(roomId string) *Room {
+	b.cLock.RLock()
+	defer b.cLock.RUnlock()
+	if room, ok := b.rooms[roomId]; ok {
+		return room
+	}
+
+	return nil
+}
+
+func (b *Bucket) RoomsCount() map[string]int32 {
+	b.cLock.RLock()
+	defer b.cLock.RUnlock()
+	resp := make(map[string]int32)
+	for roomId, v := range b.rooms {
+		resp[roomId] = int32(v.Online)
+	}
+
+	return resp
+}
+
+func (b *Bucket) UpdateRoomCount(roomCount map[string]int32) {
+	b.cLock.RLock()
+	defer b.cLock.RUnlock()
+	for roomId, room := range b.rooms {
+		room.OnlineCount = roomCount[roomId]
+	}
 }

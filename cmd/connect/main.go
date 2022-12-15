@@ -19,7 +19,10 @@ func main() {
 	if err := connect.InitTCP(s, conf.Conf.Tcp.Host); err != nil {
 		panic(err)
 	}
-	//todo websocket
+	if err := connect.InitWebsocket(s, conf.Conf.Websocket.Host); err != nil {
+		panic(err)
+	}
+
 	// new grpc server
 	rpcSrv := grpc.New(conf.Conf.RPCServer, s)
 	// signal

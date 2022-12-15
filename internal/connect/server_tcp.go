@@ -18,12 +18,12 @@ const (
 )
 
 func InitTCP(s *Server, addrs []string) error {
-	var (
-		err      error
-		tcpAddr  *net.TCPAddr
-		listener *net.TCPListener
-	)
 	for _, addr := range addrs {
+		var (
+			err      error
+			tcpAddr  *net.TCPAddr
+			listener *net.TCPListener
+		)
 		if tcpAddr, err = net.ResolveTCPAddr("tcp", addr); err != nil {
 			s.log.Error("resolve tcp addr err", zap.Error(err))
 			return err
@@ -125,19 +125,19 @@ func (s *Server) ServeTCP(ch *Channel) {
 	}
 
 	//读取消息并write数据到客户端
-	go s.writeTCPData(ctx, ch.connTcp, ch, b)
+	go s.writeTCPData(ctx, ch)
 	//读取前端发送过来的消息
-	s.readTCPData(ctx, ch.connTcp, ch, b)
+	go s.readTCPData(ctx, ch, b)
 }
 
-func (s *Server) writeTCPData(ctx context.Context, conn *net.TCPConn, ch *Channel, b *Bucket) {
+func (s *Server) writeTCPData(ctx context.Context, ch *Channel) {
 	var (
 		p      *protocol.Proto
 		finish bool
 		online int32
 		err    error
 	)
-	wr := bufio.NewWriter(conn)
+	wr := bufio.NewWriter(ch.connTcp)
 	for {
 		//推送过来的消息
 		p = ch.Ready()
@@ -173,20 +173,18 @@ func (s *Server) writeTCPData(ctx context.Context, conn *net.TCPConn, ch *Channe
 	}
 failed:
 	//todo 是否会重复关闭
-	conn.Close()
+	ch.connTcp.Close()
 	// must ensure all channel message discard, for reader won't blocking Signal
 	for !finish {
 		finish = ch.Ready() == protocol.ProtoFinish
 	}
 }
 
-//tcp 15s 3共45
-func (s *Server) readTCPData(ctx context.Context, conn *net.TCPConn, ch *Channel, b *Bucket) {
+func (s *Server) readTCPData(ctx context.Context, ch *Channel, b *Bucket) {
 	var err error
 	reader := bufio.NewReader(ch.connTcp)
 	for {
 		p := new(protocol.Proto)
-		//todo 敏感词过滤
 		//消息解析
 		err = proto.ReadTcp(p, reader)
 		//todo 处理
@@ -206,6 +204,7 @@ func (s *Server) readTCPData(ctx context.Context, conn *net.TCPConn, ch *Channel
 				break
 			}
 		}
+		//todo 敏感词过滤
 		//channel长度不够会报错，等待数据被发出去
 		if err = ch.Push(p); err != nil {
 			s.log.Error(fmt.Sprintf("push proto err, key: %s mid: %d ", ch.Key, ch.Mid), zap.Error(err))

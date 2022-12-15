@@ -2,6 +2,7 @@ package connect
 
 import (
 	"github.com/pkg/errors"
+	"go-im/api/protocol"
 	"sync"
 )
 
@@ -10,8 +11,8 @@ type Room struct {
 	lock        sync.RWMutex
 	next        *Channel //channel链表中的头,新加入的channel统一放头部
 	drop        bool     // make room is live  true表示房间关闭 false表示房间直播中
-	Online      int
-	OnlineCount int // room online user count
+	Online      int32
+	OnlineCount int32 // room online user count (所有的)
 }
 
 func NewRoom(roomId string) *Room {
@@ -74,7 +75,16 @@ func (r *Room) Close() {
 // OnlineNum the room all online.
 func (r *Room) OnlineNum() int32 {
 	if r.OnlineCount > 0 {
-		return int32(r.OnlineCount)
+		return r.OnlineCount
 	}
-	return int32(r.Online)
+	return r.Online
+}
+
+// Push push msg to the room, if chan full discard it.
+func (r *Room) Push(p *protocol.Proto) {
+	r.lock.RLock()
+	defer r.lock.RUnlock()
+	for ch := r.next; ch != nil; ch = ch.Next {
+		ch.Push(p)
+	}
 }

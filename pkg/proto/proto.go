@@ -91,9 +91,9 @@ func WriteTcp(p *protocol.Proto, writer *bufio.Writer) error {
 		return err
 	}
 	//bufio有缓存，flush真正写数据
-	if err = writer.Flush(); err != nil {
-		return err
-	}
+	//if err = writer.Flush(); err != nil {
+	//	return err
+	//}
 	return nil
 }
 

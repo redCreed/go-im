@@ -32,12 +32,12 @@ func Parse(path string) {
 	Conf.RPCServer = &RPCServer{
 		Network:           "tcp",
 		Addr:              ":3109",
-		Timeout:           time.Duration(time.Second * 3),
-		IdleTimeout:       time.Duration(time.Second * 60),
-		MaxLifeTime:       time.Duration(time.Hour * 2),
-		ForceCloseWait:    time.Duration(time.Second * 20),
-		KeepAliveInterval: time.Duration(time.Second * 60),
-		KeepAliveTimeout:  time.Duration(time.Second * 20),
+		Timeout:           time.Second * 3,
+		IdleTimeout:       time.Second * 60,
+		MaxLifeTime:       time.Hour * 2,
+		ForceCloseWait:    time.Second * 20,
+		KeepAliveInterval: time.Second * 60,
+		KeepAliveTimeout:  time.Second * 20,
 	}
 }
 
@@ -47,6 +47,14 @@ type Config struct {
 	Mode      *Mode
 	Protocol  *Protocol
 	RPCServer *RPCServer
+	Websocket *Websocket
+}
+
+type Websocket struct {
+	Host        []string
+	TlsOpen     bool
+	CertFile    string
+	PrivateFile string
 }
 
 type Bucket struct {

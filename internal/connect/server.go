@@ -1,11 +1,13 @@
 package connect
 
 import (
+	"context"
 	"github.com/google/uuid"
 	"go-im/api/logic"
 	"go-im/internal/connect/conf"
 	"go-im/pkg/cityhash"
 	"go-im/pkg/log"
+	"time"
 )
 
 type Server struct {
@@ -29,13 +31,35 @@ func NewServer(c *conf.Config) *Server {
 	s.serverID = uuid.New().String()
 	s.log = log.NewLog("im", c.Mode.Debug)
 	s.c = c
-	//s.rpcClient
+	//todo s.rpcClient
+
+	//更新用户在线人数
 	go s.onlineProc()
 	return s
 }
 
 func (s *Server) onlineProc() {
-
+	for {
+		var (
+			allRoomsCount map[string]int32
+			err           error
+		)
+		roomCount := make(map[string]int32)
+		for _, bucket := range s.buckets {
+			for roomID, count := range bucket.RoomsCount() {
+				roomCount[roomID] += count
+			}
+		}
+		//防止出现死循环
+		if allRoomsCount, err = s.RenewOnline(context.Background(), s.serverID, roomCount); err != nil {
+			time.Sleep(time.Second * 3)
+			continue
+		}
+		for _, bucket := range s.buckets {
+			bucket.UpdateRoomCount(allRoomsCount)
+		}
+		time.Sleep(time.Second * 10)
+	}
 }
 
 func (s *Server) Buckets() []*Bucket {
@@ -46,4 +70,3 @@ func (s *Server) Bucket(key string) *Bucket {
 	idx := cityhash.CityHash32([]byte(key), uint32(len(key))) % uint32(len(s.buckets))
 	return s.buckets[idx]
 }
-

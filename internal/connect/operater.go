@@ -6,6 +6,8 @@ import (
 	"go-im/api/logic"
 	"go-im/api/protocol"
 	"go.uber.org/zap"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/encoding/gzip"
 	"strconv"
 	"strings"
 	"time"
@@ -70,7 +72,6 @@ func (s *Server) Operate(ctx context.Context, p *protocol.Proto, b *Bucket, ch *
 
 // Receive receive a message.
 func (s *Server) Receive(ctx context.Context, mid int64, p *protocol.Proto) (err error) {
-	return
 	_, err = s.rpcClient.Receive(ctx, &logic.ReceiveReq{Mid: mid, Proto: p})
 	return
 }
@@ -90,4 +91,16 @@ func SplitInt32s(s, p string) ([]int32, error) {
 		res = append(res, int32(i))
 	}
 	return res, nil
+}
+
+// RenewOnline renew room online.
+func (s *Server) RenewOnline(ctx context.Context, serverID string, roomCount map[string]int32) (allRoom map[string]int32, err error) {
+	reply, err := s.rpcClient.RenewOnline(ctx, &logic.OnlineReq{
+		Server:    s.serverID,
+		RoomCount: roomCount,
+	}, grpc.UseCompressor(gzip.Name))
+	if err != nil {
+		return
+	}
+	return reply.AllRoomCount, nil
 }
