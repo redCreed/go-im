@@ -2,8 +2,11 @@ package connect
 
 import (
 	"go-im/api/connect"
+	pb "go-im/api/connect"
+	"go-im/api/protocol"
 	"go-im/internal/connect/conf"
 	"sync"
+	"sync/atomic"
 )
 
 type Bucket struct {
@@ -26,7 +29,6 @@ func NewBucket(bucket *conf.Bucket) (b *Bucket) {
 		b.routines[i] = c
 		go b.roomProc(c)
 	}
-
 	return
 }
 
@@ -161,4 +163,68 @@ func (b *Bucket) UpdateRoomCount(roomCount map[string]int32) {
 	for roomId, room := range b.rooms {
 		room.OnlineCount = roomCount[roomId]
 	}
+}
+
+// Rooms get all room id where online number > 0.
+func (b *Bucket) Rooms() (res map[string]struct{}) {
+	var (
+		roomID string
+		room   *Room
+	)
+	res = make(map[string]struct{})
+	b.cLock.RLock()
+	for roomID, room = range b.rooms {
+		if room.Online > 0 {
+			res[roomID] = struct{}{}
+		}
+	}
+	b.cLock.RUnlock()
+	return
+}
+
+// BroadcastRoom broadcast a message to specified room
+func (b *Bucket) BroadcastRoom(req *pb.BroadcastRoomReq) {
+	num := atomic.AddUint64(&b.routinesNum, 1) % uint64(len(b.routines))
+	b.routines[num] <- req
+}
+
+// Broadcast push msgs to all channels in the bucket.
+func (b *Bucket) Broadcast(p *protocol.Proto, op int32) {
+	var ch *Channel
+	b.cLock.RLock()
+	for _, ch = range b.chs {
+		if !ch.NeedPush(op) {
+			continue
+		}
+		_ = ch.Push(p)
+	}
+	b.cLock.RUnlock()
+}
+
+// NeedPush verify if in watch.
+func (c *Channel) NeedPush(op int32) bool {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
+	if _, ok := c.watchOps[op]; ok {
+		return true
+	}
+	return false
+}
+
+// ChannelCount channel count in the bucket
+func (b *Bucket) ChannelCount() int {
+	return len(b.chs)
+}
+
+// RoomCount room count in the bucket
+func (b *Bucket) RoomCount() int {
+	return len(b.rooms)
+}
+
+// Channel get a channel by sub key.
+func (b *Bucket) Channel(key string) (ch *Channel) {
+	b.cLock.RLock()
+	ch = b.chs[key]
+	b.cLock.RUnlock()
+	return
 }

@@ -1,0 +1,10 @@
+##服务注册与发现
+Discovery:
+  driver: etcd
+  host: 127.0.0.1:2379
+  timeout: 5
+
+Kafka:
+  topic: goim-push-topic
+  group: goim-push-group-job
+  brokers: ["192.168.1.212:9092"]
