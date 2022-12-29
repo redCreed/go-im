@@ -44,7 +44,7 @@ func (k *Kafka) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.C
 		//	message.Topic, message.Partition, message.Offset, string(message.Value), message.Timestamp)
 		pushMsg := new(pb.PushMsg)
 		if err := proto.Unmarshal(message.Value, pushMsg); err != nil {
-			k.s.log.Error(fmt.Sprintf("proto.Unmarshal(%v)  ", message), zap.Error(err))
+			k.s.log.Error(fmt.Sprintf("proto.Unmarshal(%v)", message), zap.Error(err))
 			continue
 		}
 		if err := k.s.push(context.Background(), pushMsg); err != nil {
