@@ -22,6 +22,11 @@ func NewServer(c *conf.Config) *Server {
 	s.c = c
 	s.log = log.NewLog("im", c.Mode.Debug)
 	//todo connect
+	connectS, err := newConnectServer(c)
+	if err != nil {
+		panic(err)
+	}
+	s.connect[connectS.serverId] = connectS
 
 	s.k = NewKafka(s)
 	return s

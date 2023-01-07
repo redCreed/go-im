@@ -12,7 +12,8 @@ require (
 )
 
 require (
-	github.com/Shopify/sarama v1.37.2 // indirect
+	github.com/Shopify/sarama v1.37.2
+	github.com/gomodule/redigo v1.8.9
 	github.com/json-iterator/go v1.1.12
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/viper v1.14.0

@@ -131,7 +131,6 @@ func (c *ConnectServer) PushRoom(msg *connect.BroadcastRoomReq) error {
 }
 
 func (c *ConnectServer) Broadcast(msg *connect.BroadcastReq) error {
-	c.broadcastChan <- msg
 	select {
 	case c.broadcastChan <- msg:
 	default:
