@@ -59,8 +59,11 @@ func (s server) Heartbeat(ctx context.Context, req *pb.HeartbeatReq) (*pb.Heartb
 }
 
 func (s server) RenewOnline(ctx context.Context, req *pb.OnlineReq) (*pb.OnlineReply, error) {
-	//TODO implement me
-	panic("implement me")
+	allRoomCount, err := s.logic.RenewOnline(ctx, req.Server, req.RoomCount)
+	if err != nil {
+		return &pb.OnlineReply{}, err
+	}
+	return &pb.OnlineReply{AllRoomCount: allRoomCount}, nil
 }
 
 func (s server) Receive(ctx context.Context, req *pb.ReceiveReq) (*pb.ReceiveReply, error) {

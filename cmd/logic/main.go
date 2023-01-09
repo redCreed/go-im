@@ -4,6 +4,8 @@ import (
 	"flag"
 	"go-im/internal/logic"
 	"go-im/internal/logic/conf"
+	"go-im/internal/logic/grpc"
+	"go-im/internal/logic/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -15,7 +17,9 @@ func main() {
 	flag.Parse()
 	conf.Parse(confPath)
 	//todo etcd
-	srv := logic.New(conf.Conf)
+	l := logic.New(conf.Conf)
+	rpcSrv := grpc.New(conf.Conf.RPCServer, l)
+	httpSrv := http.New(conf.Conf.HTTPServer, l)
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, syscall.SIGHUP, syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGINT)
 	for {
@@ -26,8 +30,8 @@ func main() {
 			//	cancel()
 			//}
 			//srv.Close()
-			//httpSrv.Close()
-			//rpcSrv.GracefulStop()
+			httpSrv.Close()
+			rpcSrv.GracefulStop()
 			//log.Flush()
 			return
 		case syscall.SIGHUP:
