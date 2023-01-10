@@ -39,6 +39,17 @@ func (s *Server) initRouter() {
 	group.GET("/online/total", s.onlineTotal)
 	//group.GET("/nodes/weighted", s.nodesWeighted)
 	//group.GET("/nodes/instances", s.nodesInstances)
+
+	//todo 待实现
+	//userGroup := s.engine.Group("/user")
+	//userGroup.POST("/login", s.Login)
+	//userGroup.POST("/register", s.Register)
+	//
+	//userGroup.Use(CheckSessionId())
+	//{
+	//	userGroup.POST("/checkAuth", s.CheckAuth)
+	//	userGroup.POST("/logout", s.Logout)
+	//}
 }
 
 // Close close the server.
