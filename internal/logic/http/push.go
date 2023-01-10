@@ -70,6 +70,7 @@ func (s *Server) pushRoom(c *gin.Context) {
 	}
 
 	//todo token校验
+
 	//发送消息
 	if err = s.logic.PushRoom(c, arg.Op, arg.Type, arg.Room, msg); err != nil {
 		errors(c, ServerErr, err.Error())
