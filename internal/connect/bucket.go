@@ -151,7 +151,7 @@ func (b *Bucket) RoomsCount() map[string]int32 {
 	defer b.cLock.RUnlock()
 	resp := make(map[string]int32)
 	for roomId, v := range b.rooms {
-		resp[roomId] = int32(v.Online)
+		resp[roomId] = v.Online
 	}
 
 	return resp

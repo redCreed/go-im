@@ -42,12 +42,19 @@ func Parse(path string) {
 }
 
 type Config struct {
+	Discovery *Discovery
 	Bucket    *Bucket
 	Tcp       *TCP
 	Mode      *Mode
 	Protocol  *Protocol
 	RPCServer *RPCServer
 	Websocket *Websocket
+}
+
+type Discovery struct {
+	Driver string
+	Host   string
+	Lease  int
 }
 
 type Websocket struct {

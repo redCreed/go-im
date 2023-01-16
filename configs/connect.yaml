@@ -2,7 +2,7 @@
 Discovery:
   driver: etcd
   host: 127.0.0.1:2379
-  timeout: 5
+  lease: 10
 
 Redis:
   host: 127.0.0.1

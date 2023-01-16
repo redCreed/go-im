@@ -2,7 +2,6 @@ package connect
 
 import (
 	"context"
-	"github.com/google/uuid"
 	"go-im/api/logic"
 	"go-im/internal/connect/conf"
 	"go-im/pkg/cityhash"
@@ -20,7 +19,7 @@ type Server struct {
 }
 
 // NewServer returns a new Server.
-func NewServer(c *conf.Config) *Server {
+func NewServer(c *conf.Config, serverId string) *Server {
 	s := &Server{}
 	s.buckets = make([]*Bucket, c.Bucket.Size)
 	s.bucketIdx = uint32(c.Bucket.Size)
@@ -28,7 +27,7 @@ func NewServer(c *conf.Config) *Server {
 		s.buckets[i] = NewBucket(c.Bucket)
 	}
 	//生成uuid或者ip
-	s.serverID = uuid.New().String()
+	s.serverID = serverId
 	s.log = log.NewLog("im", c.Mode.Debug)
 	s.c = c
 	//todo s.rpcClient
